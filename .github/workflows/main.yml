@@ -20,7 +20,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
          
       - name: Build Docker Image
-         run:docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/react:latest .
+         run:docker build -t bhavya8340/react:latest .
         
       - name: Push Docker Image to Docker Hub 
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/react:latest
+        run: docker push bhavya8340/react:latest

@@ -18,9 +18,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
+         
       - name: Build Docker Image
-        run: docker build -t bhavya8340/react:latest .
+        run: |
+         cd var/www/html/CI-CD-Pipeline
+         docker build -t bhavya8340/react:latest .
         
       - name: Push Docker Image to Docker Hub
         run: docker push bhavya8340/react:latest

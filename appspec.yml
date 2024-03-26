@@ -3,9 +3,11 @@ os: linux
 files:
   - source: /
     destination: /var/www/CI-CD-Pipeline
-file_exists_behavior: OVERWRITE
+    overwrite: true  # Assuming 'overwrite' is the correct property for file_exists_behavior
+
 hooks:
   AfterInstall:
     - location: scripts/deploy.sh
       timeout: 300
       runas: root
+

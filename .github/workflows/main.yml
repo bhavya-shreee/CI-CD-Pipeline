@@ -20,9 +20,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
          
       - name: Build Docker Image
-        run: |
-         cd var/www/html/CI-CD-Pipeline
-         docker build -t bhavya8340/react:latest .
+        run: docker build -t bhavya8340/react:latest .
         
       - name: Push Docker Image to Docker Hub
         run: docker push bhavya8340/react:latest

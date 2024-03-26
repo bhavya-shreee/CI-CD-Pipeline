@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+
+  build:
+    commands:
+      - npm install
+      - npm run build
+
+  deploy:
+    commands:
+      # Replace the following commands with your actual deployment commands
+      - echo "Deploying application..."
+      - aws s3 sync ./dist s3://git11
+      - echo "Application deployed successfully"
+
+# You can define environment variables here if needed
+# env:
+#   variables:
+#     AWS_REGION: "us-east-1"
+#     AWS_ACCESS_KEY_ID: "<your-access-key-id>"
+#     AWS_SECRET_ACCESS_KEY: "<your-secret-access-key>"

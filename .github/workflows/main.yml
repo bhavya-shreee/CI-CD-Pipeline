@@ -1,81 +1,89 @@
-name: Deploy to EC2 Node.js CI/CD
+name: Publish Docker image
+
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
 
 jobs:
-  build:
+  push_to_registry:
+    name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [16.x]
-        appname: ['depl-appl']
-        deploy-group: ['depl-appl-grup']
-        s3-bucket: ['git11']
-        s3-filename: ['staging-aws-codedeploy-${{ github.sha }}']
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Generate unique Docker image tag
-      id: version
-      run: echo "::set-output name=tag::$(echo ${{ github.run_id }})"
-
-
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-
-    - name: Check out the repo
-      uses: actions/checkout@v3
+      - name: Check out the repo
+        uses: actions/checkout@v3
       
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       
-    - name: Extract metadata (tags, labels) for Docker
-      id: meta
-      uses: docker/metadata-action@v2
-      with:
-          images: bhavya8340/testjodejsapp
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v2
+        with:
+          images: bhavya8340/nodejsapp
       
-    - name: Build and push Docker image
-      uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-      with:
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-    - name: chmod
-      run: chmod -R +x  scripts/*
+      - name: SSH to Instance
 
-    - name: Install dependencies
-      run: npm install  
-        
-    - name: Install dependencies and create build
-      run: |
-        npm run build       
+        env:
 
-    - name: AWS Deploy push
-      run: |
-          aws deploy push \
-            --application-name ${{ matrix.appname }} \
-            --description "This is a revision for the ${{ matrix.appname }}-${{ github.sha }}" \
-            --s3-location s3://${{ matrix.s3-bucket }}/${{ matrix.s3-filename }}.zip \
-            --source .
+          HOSTNAME: ${{ secrets.SSH_HOST }}
 
-    - name: Create CodeDeploy Deployment
-      id: deploy
-      run: |
-          aws deploy create-deployment \
-            --application-name ${{ matrix.appname }} \
-            --deployment-config-name CodeDeployDefault.OneAtATime \
-            --deployment-group-name ${{ matrix.deploy-group }} \
-            --file-exists-behavior OVERWRITE \
-            --s3-location bucket=${{ matrix.s3-bucket }},key=${{ matrix.s3-filename }}.zip,bundleType=zip
+          USER_NAME: ${{ secrets.USER_NAME }}
+
+        run: |
+
+          echo "${{ secrets.SSH_PRIVATEKEY }}" > my-ssh-key.pem
+
+          chmod 600 my-ssh-key.pem
+
+
+
+          # Get the ID of the running container
+
+          RUNNING_CONTAINER=$(ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} "sudo docker ps --filter \"name=easyvsl-staging\" --format \"{{.ID}}\"")
+
+
+
+          if [ -n "$RUNNING_CONTAINER" ]; then
+
+            echo "Stopping and removing existing container: $RUNNING_CONTAINER"
+
+            ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} "sudo docker stop $RUNNING_CONTAINER || true"
+
+            ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} "sudo docker rm $RUNNING_CONTAINER || true"
+
+          else
+
+            echo "No existing container found with name: easyvsl-staging"
+
+          fi
+
+
+
+          ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} '
+
+          sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/easyvsl-stage:${{ steps.version.outputs.tag }}
+
+          UNIQUE_ID=$(date +%s)
+
+          CONTAINER_NAME="easyvsl-staging-${UNIQUE_ID}"
+
+          echo "Starting Docker container..."
+
+          sudo docker run -d --name $CONTAINER_NAME -p 4000:4000 --env-file ./.env ${{ secrets.DOCKER_USERNAME }}/easyvsl-stage:${{ steps.version.outputs.tag }}
+
+          echo "Docker container started......."
+
+          sudo docker image prune -a --force

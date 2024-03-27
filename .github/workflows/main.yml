@@ -1,33 +1,86 @@
-name: Publish Docker image
-
+name: Deploy to EC2 Node.js CI/CD
 on:
   push:
-    branches: ['main']
+    branches: [ "main" ]
 
 jobs:
-  push_to_registry:
-    name: Push Docker image to Docker Hub
+  build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+        appname: ['depl-appl']
+        deploy-group: ['depl-appl-grup']
+        s3-bucket: ['git11']
+        s3-filename: ['staging-aws-codedeploy-${{ github.sha }}']
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+
+    - name: Generate unique Docker image tag
+      id: version
+      run: echo "::set-output name=tag::$(echo ${{ github.run_id }})"
+
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Check out the repo
+      uses: actions/checkout@v3
       
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v2
-        with:
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v2
+      with:
           images: bhavya8340/testjodejsapp
       
-      - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
+    - name: Build and push Docker image
+      uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+      with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+    - name: chmod
+      run: chmod -R +x  scripts/*
+
+    - name: Install dependencies
+      run: npm install  
+        
+    - name: Install dependencies and create build
+      run: |
+        npm run build  
+
+    - name: Deploy to S3
+      run: |
+        S3_BUCKET="git11"
+        aws s3 sync build/ "s3://$S3_BUCKET"      
+
+    - name: AWS Deploy push
+      run: |
+          aws deploy push \
+            --application-name ${{ matrix.appname }} \
+            --description "This is a revision for the ${{ matrix.appname }}-${{ github.sha }}" \
+            --s3-location s3://${{ matrix.s3-bucket }}/${{ matrix.s3-filename }}.zip \
+            --source .
+
+    - name: Create CodeDeploy Deployment
+      id: deploy
+      run: |
+          aws deploy create-deployment \
+            --application-name ${{ matrix.appname }} \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --deployment-group-name ${{ matrix.deploy-group }} \
+            --file-exists-behavior OVERWRITE \
+            --s3-location bucket=${{ matrix.s3-bucket }},key=${{ matrix.s3-filename }}.zip,bundleType=zip

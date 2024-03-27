@@ -42,7 +42,7 @@ jobs:
 
         run: |
 
-          echo "${{ secrets.SSH_PRIVATEKEY }}" > my-key.pem
+          echo "${{ secrets.SSH_PRIVATEKEY }}" > my-ssh-key.pem
 
           chmod 600 my-ssh-key.pem
 

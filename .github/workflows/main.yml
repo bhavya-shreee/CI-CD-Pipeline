@@ -60,12 +60,7 @@ jobs:
         
     - name: Install dependencies and create build
       run: |
-        npm run build  
-
-    - name: Deploy to S3
-      run: |
-        S3_BUCKET="git11"
-        aws s3 sync build/ "s3://$S3_BUCKET"      
+        npm run build       
 
     - name: AWS Deploy push
       run: |

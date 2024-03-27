@@ -53,12 +53,12 @@ jobs:
             echo "No existing container found with name: frontend-staging"
           fi
           ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} '
-          sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
-          sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/frontend-stage:${{ steps.version.outputs.tag }}
+          sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/frontend-stage:${{ steps.version.outputs.tag }}
           UNIQUE_ID=$(date +%s)
           CONTAINER_NAME="frontend-staging-${UNIQUE_ID}"
           echo "Starting Docker container..."
-          sudo docker run -d --name $CONTAINER_NAME -p 3000:3000 ${{ secrets.DOCKER_HUB_USERNAME }}/frontend-stage:${{ steps.version.outputs.tag }}
+          sudo docker run -d --name $CONTAINER_NAME -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/frontend-stage:${{ steps.version.outputs.tag }}
           echo "Docker container started......."
           sudo docker image prune -a --force
           '

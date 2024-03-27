@@ -22,7 +22,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v2
         with:
-          images: bhavya8340/nodejsapp
+          images: bhavya8340/react-app
       
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
@@ -50,7 +50,7 @@ jobs:
 
           # Get the ID of the running container
 
-          RUNNING_CONTAINER=$(ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} "sudo docker ps --filter \"name=easyvsl-staging\" --format \"{{.ID}}\"")
+          RUNNING_CONTAINER=$(ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} "sudo docker ps --filter \"name=react-app\" --format \"{{.ID}}\"")
 
 
 
@@ -64,7 +64,7 @@ jobs:
 
           else
 
-            echo "No existing container found with name: easyvsl-staging"
+            echo "No existing container found with name: react-app"
 
           fi
 
@@ -72,17 +72,17 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i my-ssh-key.pem $USER_NAME@${HOSTNAME} '
 
-          sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/easyvsl-stage:${{ steps.version.outputs.tag }}
+          sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/react-app:${{ steps.version.outputs.tag }}
 
           UNIQUE_ID=$(date +%s)
 
-          CONTAINER_NAME="easyvsl-staging-${UNIQUE_ID}"
+          CONTAINER_NAME="react-app-${UNIQUE_ID}"
 
           echo "Starting Docker container..."
 
-          sudo docker run -d --name $CONTAINER_NAME -p 4000:4000 --env-file ./.env ${{ secrets.DOCKER_USERNAME }}/easyvsl-stage:${{ steps.version.outputs.tag }}
+          sudo docker run -d --name $CONTAINER_NAME -p 4000:4000 --env-file ./.env ${{ secrets.DOCKER_USERNAME }}/react-app:${{ steps.version.outputs.tag }}
 
           echo "Docker container started......."
 
